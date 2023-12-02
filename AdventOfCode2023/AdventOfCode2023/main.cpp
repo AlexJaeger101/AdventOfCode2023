@@ -1,16 +1,15 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <regex>
 #include <vector>
+#include <sstream>
 
 int ChallengePart1();
 int ChallengePart2();
-char GetFirstNum(std::string input);
-char GetFirstNumSubStringMethod(std::string input);
-char GetLastNum(std::string input);
-char GetLastNumSubStringMethod(std::string input);
-std::string FindSubstring(std::string input, int n);
-std::string FindReversedSubstring(std::string input, int n);
+bool CheckColorValue(std::regex regColor, std::string game, int maxNum);
+std::vector<std::string> splitString(const std::string& str, char splitter);
+int FindMinNumOfCubes(std::regex regColor, std::string game);
 
 int main()
 {
@@ -25,16 +24,36 @@ int main()
 int ChallengePart1()
 {
 	int total = 0;
-	std::fstream adventInputFile;
+	int maxBlue = 14;
+	int maxGreen = 13;
+	int maxRed = 12;
+	int counter = 0;
 
+	//regexs
+	std::regex regBlue("[0-9]+ blue");
+	std::regex regGreen("[0-9]+ green");
+	std::regex regRed("[0-9]+ red");
+
+
+	std::fstream adventInputFile;
 	adventInputFile.open("AdventInput.txt");
 	if (adventInputFile.is_open())
 	{
 		std::string textLine;
 		while (std::getline(adventInputFile, textLine))
 		{
-			std::string extracted = { GetFirstNum(textLine) , GetLastNum(textLine) };
-			total += std::stoi(extracted);
+			counter++;
+
+			if (!CheckColorValue(regBlue, textLine, maxBlue))
+				continue;
+
+			if (!CheckColorValue(regGreen, textLine, maxGreen))
+				continue;
+
+			if (!CheckColorValue(regRed, textLine, maxRed))
+				continue;
+
+			total += counter;
 		}
 
 		adventInputFile.close();
@@ -50,7 +69,11 @@ int ChallengePart1()
 int ChallengePart2()
 {
 	int total = 0;
-	std::vector<std::string> nums{ "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
+
+	//regexs
+	std::regex regBlue("[0-9]+ blue");
+	std::regex regGreen("[0-9]+ green");
+	std::regex regRed("[0-9]+ red");
 
 	std::fstream adventInputFile;
 	adventInputFile.open("AdventInput.txt");
@@ -59,8 +82,12 @@ int ChallengePart2()
 		std::string textLine;
 		while (std::getline(adventInputFile, textLine))
 		{
-			std::string extracted = { GetFirstNumSubStringMethod(textLine) , GetLastNumSubStringMethod(textLine) };
-			total += std::stoi(extracted);
+			int blueUsed = FindMinNumOfCubes(regBlue, textLine);
+			int greenUsed = FindMinNumOfCubes(regGreen, textLine);
+			int redUsed = FindMinNumOfCubes(regRed, textLine);
+
+			total += (blueUsed * greenUsed * redUsed);
+
 		}
 
 		adventInputFile.close();
@@ -73,67 +100,57 @@ int ChallengePart2()
 	return total;
 }
 
-char GetFirstNum(std::string input)
+bool CheckColorValue(std::regex regColor, std::string game, int maxNum)
 {
-	for (char& c : input)
+	std::regex numExtractor("[0-9]+");
+	std::vector<std::string> gameVec = splitString(game, ';');
+	for (std::string round : gameVec)
 	{
-		if (std::isdigit(c))
-			return int(c);
+		int counter = 0;
+
+		for (std::sregex_iterator i = std::sregex_iterator(round.begin(), round.end(), regColor); i != std::sregex_iterator(); i++)
+		{
+			std::smatch match = *i;
+			std::string matchStr = match.str();
+			counter += std::stoi(matchStr.substr(0, matchStr.find(' ')));
+
+			if (counter > maxNum)
+				return false;
+		}
 	}
 
-	return '0';
+	return true;
 }
 
-char GetLastNum(std::string input)
+int FindMinNumOfCubes(std::regex regColor, std::string game)
 {
-	std::reverse(input.begin(), input.end());
-	return GetFirstNum(input);
-}
-
-char GetFirstNumSubStringMethod(std::string input)
-{
-	std::vector<std::string> nums { "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
-
-	for (int i = 0; i < input.length(); i++)
+	int minNumOfCubes = 0;
+	std::regex numExtractor("[0-9]+");
+	std::vector<std::string> gameVec = splitString(game, ';');
+	for (std::string round : gameVec)
 	{
-		if (std::isdigit(input[i]))
-			return input[i];
+		for (std::sregex_iterator i = std::sregex_iterator(round.begin(), round.end(), regColor); i != std::sregex_iterator(); i++)
+		{
+			std::smatch match = *i;
+			std::string matchStr = match.str();
+			int cubesUsed = std::stoi(matchStr.substr(0, matchStr.find(' ')));
 
-		std::string substr = FindSubstring(input, i + 1);
-		for (int j = 0; j < nums.size(); j++)
-			if (substr.find(nums[j]) != std::string::npos)
-				return (j + 1) + '0';
+			if (cubesUsed > minNumOfCubes)
+				minNumOfCubes = cubesUsed;
+		}
 	}
+
+	return minNumOfCubes;
 }
 
-char GetLastNumSubStringMethod(std::string input)
+std::vector<std::string> splitString(const std::string& str, char splitter)
 {
-	std::vector<std::string> nums{ "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
+	std::vector<std::string> splitVec;
+	std::stringstream ss(str);
 
-	for (int i = input.length() - 1; i >= 0; i--)
-	{
-		if (std::isdigit(input[i]))
-			return input[i];
-
-		std::string substr = FindReversedSubstring(input, (input.length() - i) + 1);
-		for (int j = 0; j < nums.size(); j++)
-			if (substr.find(nums[j]) != std::string::npos)
-				return (j + 1) + '0';
-	}
-}
-
-std::string FindSubstring(std::string input, int n)
-{
-	if (input.length() < n)
-		return input;
-
-	return input.substr(0, n);
-}
-
-std::string FindReversedSubstring(std::string input, int n)
-{
-	if (input.size() < n)
-		return input;
-
-	return input.substr(input.size() - n);
+	std::string splitStr;
+	while (std::getline(ss, splitStr, splitter))
+		splitVec.push_back(splitStr);
+	
+	return splitVec;
 }
